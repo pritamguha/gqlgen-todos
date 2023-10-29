@@ -1,0 +1,116 @@
+package repository
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/jmoiron/sqlx"
+	"github.com/pritamguha/gqlgen-todos/graph/model"
+)
+
+func CreateTodo(ctx context.Context, task string) (model.Todo, error) {
+	var id int
+	var todo model.Todo
+	query := `INSERT INTO public.todo
+	(name)
+	VALUES($1) RETURNING id`
+
+	err := Db.QueryRow(query, task).Scan(&id)
+	fmt.Println("err", err)
+	if err == nil {
+		query = `SELECT * from public.todo where id = $1`
+
+		err2 := Db.QueryRow(query, id).Scan(&todo.ID, &todo.Name, &todo.DateCreated, &todo.IsActive)
+
+		if err2 == nil {
+			return todo, nil
+		} else {
+			return todo, err2
+		}
+	}
+	return todo, err
+}
+
+func Todos(ctx context.Context) ([]*model.Todo, error) {
+	result := []*model.Todo{}
+
+	query := `SELECT * FROM public.todo`
+
+	row, err := Db.Query(query)
+
+	fmt.Println("row", row)
+	fmt.Println("err", err)
+
+	if err != nil {
+		fmt.Println("err", err)
+		return nil, err
+	}
+
+	for row.Next() {
+		eachRow := model.Todo{}
+		err2 := row.Scan(&eachRow.ID,
+			&eachRow.Name,
+			&eachRow.DateCreated,
+			&eachRow.IsActive,
+		)
+
+		if err2 != nil {
+			fmt.Println("err2", err2)
+			return nil, err2
+		}
+		fmt.Println("&eachRow", &eachRow)
+		result = append(result, &eachRow)
+	}
+	fmt.Println("result", result)
+	return result, nil
+}
+
+func EditTodo(ctx context.Context, id string, name *string, isActive *bool) (model.Todo, error) {
+	todo := model.Todo{}
+
+	query := ` update public.todo SET  `
+	var inputargs []interface{}
+	if name != nil {
+		query += `name = ? `
+		inputargs = append(inputargs, &name)
+	}
+
+	if isActive != nil {
+		if name != nil {
+			query += ` , `
+		}
+		query += `isActive = ?`
+		inputargs = append(inputargs, &isActive)
+	}
+	query += ` where id = ? returning id`
+	inputargs = append(inputargs, id)
+
+	query = sqlx.Rebind(sqlx.DOLLAR, query) // sqlx.rebind takes two input and replace ? to the $ symbol
+	fmt.Println(query)
+	sqlErr := Db.QueryRowContext(ctx, query, inputargs...).Scan(&todo.ID)
+	if sqlErr != nil {
+		fmt.Println("sqlErr", sqlErr)
+		return todo, sqlErr
+	}
+
+	query2 := `SELECT * from public.todo where id = ` + todo.ID
+
+	err2 := Db.QueryRow(query2).Scan(&todo.ID, &todo.Name, &todo.DateCreated, &todo.IsActive)
+
+	if err2 != nil {
+		fmt.Println("err2", err2)
+		return todo, err2
+	}
+	return todo, nil
+}
+
+func DeleteTodo(ctx context.Context, id string) (bool, error) {
+	query := `DELETE from public.todo where id = ` + id
+
+	_, err := Db.Exec(query)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+
+}
