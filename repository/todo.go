@@ -2,33 +2,29 @@ package repository
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/pritamguha/gqlgen-todos/graph/model"
 )
 
-func CreateTodo(ctx context.Context, task string) (model.Todo, error) {
-	var id int
-	var todo model.Todo
+func CreateTodo(ctx context.Context, task string) (*model.Todo, error) {
+	var id string
+
 	query := `INSERT INTO public.todo
 	(name)
 	VALUES($1) RETURNING id`
 
 	err := Db.QueryRow(query, task).Scan(&id)
-	fmt.Println("err", err)
+
 	if err == nil {
-		query = `SELECT * from public.todo where id = $1`
+		todo, err2 := GetTodoItem(ctx, id)
 
-		err2 := Db.QueryRow(query, id).Scan(&todo.ID, &todo.Name, &todo.DateCreated, &todo.IsActive)
-
-		if err2 == nil {
-			return todo, nil
-		} else {
-			return todo, err2
+		if err2 != nil {
+			return nil, err2
 		}
+		return todo, nil
 	}
-	return todo, err
+	return nil, err
 }
 
 func Todos(ctx context.Context) ([]*model.Todo, error) {
@@ -38,11 +34,7 @@ func Todos(ctx context.Context) ([]*model.Todo, error) {
 
 	row, err := Db.Query(query)
 
-	fmt.Println("row", row)
-	fmt.Println("err", err)
-
 	if err != nil {
-		fmt.Println("err", err)
 		return nil, err
 	}
 
@@ -55,13 +47,10 @@ func Todos(ctx context.Context) ([]*model.Todo, error) {
 		)
 
 		if err2 != nil {
-			fmt.Println("err2", err2)
 			return nil, err2
 		}
-		fmt.Println("&eachRow", &eachRow)
 		result = append(result, &eachRow)
 	}
-	fmt.Println("result", result)
 	return result, nil
 }
 
@@ -86,10 +75,8 @@ func EditTodo(ctx context.Context, id string, name *string, isActive *bool) (mod
 	inputargs = append(inputargs, id)
 
 	query = sqlx.Rebind(sqlx.DOLLAR, query) // sqlx.rebind takes two input and replace ? to the $ symbol
-	fmt.Println(query)
 	sqlErr := Db.QueryRowContext(ctx, query, inputargs...).Scan(&todo.ID)
 	if sqlErr != nil {
-		fmt.Println("sqlErr", sqlErr)
 		return todo, sqlErr
 	}
 
@@ -98,7 +85,6 @@ func EditTodo(ctx context.Context, id string, name *string, isActive *bool) (mod
 	err2 := Db.QueryRow(query2).Scan(&todo.ID, &todo.Name, &todo.DateCreated, &todo.IsActive)
 
 	if err2 != nil {
-		fmt.Println("err2", err2)
 		return todo, err2
 	}
 	return todo, nil
@@ -112,5 +98,16 @@ func DeleteTodo(ctx context.Context, id string) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
 
+func GetTodoItem(ctx context.Context, id string) (*model.Todo, error) {
+	todo := model.Todo{}
+	query := `SELECT * from public.todo where id = ` + id
+
+	err := Db.QueryRow(query).Scan(&todo.ID, &todo.Name, &todo.DateCreated, &todo.IsActive)
+
+	if err != nil {
+		return nil, err
+	}
+	return &todo, nil
 }

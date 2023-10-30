@@ -2,13 +2,12 @@ package logic
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/pritamguha/gqlgen-todos/graph/model"
 	"github.com/pritamguha/gqlgen-todos/repository"
 )
 
-func CreateTodo(ctx context.Context, name string) (model.Todo, error) {
+func CreateTodo(ctx context.Context, name string) (*model.Todo, error) {
 	todo, err := repository.CreateTodo(ctx, name)
 	if err != nil {
 		return todo, err
@@ -19,8 +18,6 @@ func CreateTodo(ctx context.Context, name string) (model.Todo, error) {
 
 func Todos(ctx context.Context) ([]*model.Todo, error) {
 	todos, err := repository.Todos(ctx)
-
-	fmt.Println("todos", todos, &todos)
 
 	if err != nil {
 		return todos, nil
@@ -45,4 +42,13 @@ func DeleteTodo(ctx context.Context, id string) (bool, error) {
 	}
 
 	return isDeleted, nil
+}
+
+func GetTodoItem(ctx context.Context, id string) (*model.Todo, error) {
+	todo, err := repository.GetTodoItem(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return todo, nil
 }

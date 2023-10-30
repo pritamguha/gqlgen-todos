@@ -6,7 +6,6 @@ package graph
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/pritamguha/gqlgen-todos/graph/model"
 	"github.com/pritamguha/gqlgen-todos/logic"
@@ -16,7 +15,7 @@ import (
 func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error) {
 	todo, err := logic.CreateTodo(ctx, input.Name)
 
-	return &todo, err
+	return todo, err
 }
 
 // EditTodo is the resolver for the editTodo field.
@@ -41,7 +40,9 @@ func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
 
 // GetTodoItem is the resolver for the getTodoItem field.
 func (r *queryResolver) GetTodoItem(ctx context.Context, id string) (*model.Todo, error) {
-	panic(fmt.Errorf("not implemented: GetTodoItem - getTodoItem"))
+	todo, err := logic.GetTodoItem(ctx, id)
+
+	return todo, err
 }
 
 // Mutation returns MutationResolver implementation.
